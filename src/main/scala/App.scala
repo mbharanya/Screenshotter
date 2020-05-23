@@ -7,6 +7,10 @@ import javax.imageio.ImageIO
 
 object Screenshotter extends App {
   val startTime = LocalDateTime.now()
+  val trimmer = new FastTrim(Color.BLACK)
+  var lastUntrimmedDimensions: Option[Rectangle] = None
+  var lastTrimmedDimension: Option[ResizeDimensions] = None
+
   while(true){
     saveShot
     Thread.sleep(7* 1000 * 60)
@@ -18,8 +22,15 @@ object Screenshotter extends App {
     val file = new File(filename)
     file.getParentFile.mkdirs
     val bufferedImage = ScreenshotUtil.allMonitors
-    val trimmer = new Trim(bufferedImage, Color.BLACK)
-    val trimmed = trimmer.trim()
+
+    val newDimensions = ScreenshotUtil.getDimensions
+
+    if (!lastUntrimmedDimensions.contains(newDimensions) || lastTrimmedDimension.isEmpty){
+      lastTrimmedDimension = Some(trimmer.getDimensions(bufferedImage))
+    }
+    lastUntrimmedDimensions = Some(newDimensions)
+
+    val trimmed = trimmer.trim(lastTrimmedDimension.get, bufferedImage)
 
     val out = new FileOutputStream(file)
     ImageIO.write(trimmed, "png", out)
@@ -30,7 +41,9 @@ object Screenshotter extends App {
 }
 
 object ScreenshotUtil {
-  def allMonitors: BufferedImage = {
+  val robot = new Robot
+
+  def getDimensions = {
     val ge = GraphicsEnvironment.getLocalGraphicsEnvironment
     val screens = ge.getScreenDevices
     var allScreenBounds = new Rectangle
@@ -38,9 +51,11 @@ object ScreenshotUtil {
       val screenBounds = screen.getDefaultConfiguration.getBounds
       allScreenBounds = allScreenBounds.union(screenBounds)
     }
-    println(allScreenBounds)
-    val robot = new Robot
-    robot.createScreenCapture(allScreenBounds)
+    allScreenBounds
+  }
+
+  def allMonitors: BufferedImage = {
+    robot.createScreenCapture(getDimensions)
   }
 }
 

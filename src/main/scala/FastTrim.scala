@@ -2,18 +2,23 @@ import java.awt.Color
 import java.awt.image.BufferedImage
 import scala.util.control.Breaks._
 
+final case class ResizeDimensions(min_x: Int, max_x: Int, min_y: Int, max_y: Int)
 
-class FastTrim(private val img: BufferedImage, private val color: Color) {
-  def trim() = {
-    val width = this.img.getWidth
-    val height = this.img.getHeight
+class FastTrim(private val color: Color) {
+  def trim(resizeDimensions: ResizeDimensions, img: BufferedImage) = {
+    img.getSubimage(resizeDimensions.min_x, resizeDimensions.min_y, resizeDimensions.max_x - resizeDimensions.min_x, resizeDimensions.max_y - resizeDimensions.min_y)
+  }
+
+  def getDimensions(img: BufferedImage): ResizeDimensions = {
+    val width = img.getWidth
+    val height = img.getHeight
 
     var first_y = 0
     var first_x = 0
     var last_y = 0
     var last_x = 0
 
-    breakable{
+    breakable {
       for (x <- 0 until width) {
         val hasColorInLine = (0 until height).exists(y => img.getRGB(x, y) != this.color.getRGB)
         if (hasColorInLine) {
@@ -61,7 +66,6 @@ class FastTrim(private val img: BufferedImage, private val color: Color) {
         }
       }
     }
-
-   img.getSubimage(first_x, first_y, last_x - first_x, last_y - first_y)
+    ResizeDimensions(first_x, last_x, first_y, last_y)
   }
 }
